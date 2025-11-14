@@ -99,6 +99,29 @@ plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 
+# Count total number of decks per archetype
+archetype_counts = players["archetype"].value_counts().reset_index()
+archetype_counts.columns = ["archetype", "total_decks"]
+
+# add percentage of total decks
+total = archetype_counts["total_decks"].sum()
+archetype_counts["percentage"] = (archetype_counts["total_decks"] / total * 100).round(2)
+
+# Sort by total decks (or keep original order)
+archetype_counts = archetype_counts.sort_values(by="total_decks", ascending=False).reset_index(drop=True)
+
+print(archetype_counts)
+
+'''
+    archetype  total_decks  percentage
+0    Beatdown        53017       55.36
+1        Bait        15131       15.80
+2     Control        10518       10.98
+3       Cycle         9183        9.59
+4       Siege         5305        5.54
+5  Bridgespam         2608        2.72
+'''
+
 # Average elixir distribution by archetype
 plt.figure(figsize=(8,5))
 sns.boxplot(x="archetype", y="avg_elixir", data=players, order=players["archetype"].value_counts().index)
@@ -354,6 +377,7 @@ ax.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
 
 plt.tight_layout()
 plt.show()
+
 
 
 
