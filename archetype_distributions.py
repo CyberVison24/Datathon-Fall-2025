@@ -9,7 +9,7 @@ Created on Thu Nov 13 13:03:28 2025
 import pandas as pd
 
 #%% 1) Load the data
-file_path = "C:/Users\David/Documents/Fall 2025/datathon/battles_2020_12_09_use.csv"
+file_path = "C:/Users\David/Documents/Fall 2025/datathon/battles_2020_12_09.csv"
 battles_df = pd.read_csv(file_path)
 
 # Check the structure
@@ -377,6 +377,7 @@ ax.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
 
 plt.tight_layout()
 plt.show()
+
 
 
 
