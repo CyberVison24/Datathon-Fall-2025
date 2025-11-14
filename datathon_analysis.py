@@ -85,7 +85,7 @@ print(players.head())
 4       4.250       1  Bridgespam
 '''
 
-#%% 3) Create distributions & descriptive summaries
+#%% 3) Create archetype distributions & descriptive summaries
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -121,7 +121,8 @@ Cycle        9183.0  3.707132  0.459664  1.839286  3.375  3.750  4.000  6.000
 Siege        5305.0  3.338454  0.454496  2.500000  3.000  3.125  3.500  6.625
 '''
 
-#%% 3b) Create distributions & descriptive summaries (with color)
+#%% 3b) Create archetype distributions (with color)
+
 # Define a consistent color mapping for each archetype
 archetype_colors = {
     "Siege": "#FF6F61",       # reddish
@@ -136,111 +137,97 @@ archetype_colors = {
 archetype_order = players["archetype"].value_counts().index
 colors_ordered = [archetype_colors[a] for a in archetype_order]
 
-# 1) Deck Archetype Distribution
+import matplotlib.ticker as mtick
+from matplotlib.ticker import ScalarFormatter
+
 plt.figure(figsize=(8,5))
-sns.countplot(
+ax = sns.countplot(
     x="archetype",
     data=players,
     order=archetype_order,
     palette=colors_ordered
 )
+
+# Set title and labels
 plt.title("Deck Archetype Distribution")
+plt.xlabel("Archetype")
+plt.ylabel("Count")
 plt.xticks(rotation=45)
+
+# --- Change y-axis scale ---
+ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))  # scientific notation
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))     # force scientific notation
+
+# Optional: set custom ticks
+# ax.set_yticks([0, 10000, 20000, 30000, 40000, 50000])
+
 plt.tight_layout()
 plt.show()
 
-# 2) Average Elixir by Archetype
-plt.figure(figsize=(8,5))
-sns.boxplot(
+#%% 3c) Create distributions by elixir (with color)
+
+# Count number of decks per archetype by winner/loser
+archetype_counts = players.groupby(["archetype", "Winner"]).size().reset_index(name="count")
+print(archetype_counts)
+
+plt.figure(figsize=(10,6))
+ax = sns.barplot(
     x="archetype",
-    y="avg_elixir",
-    data=players,
-    order=archetype_order,
-    palette=colors_ordered
+    y="count",
+    hue="Winner",          # 0 = loser, 1 = winner
+    data=archetype_counts,
+    palette={1: "green", 0: "red"}
+)
+plt.title("Archetype Decks (Winners vs Losers) ")
+plt.xlabel("Archetype")
+plt.ylabel("Number of Decks")
+plt.xticks(rotation=45)
+
+# Update legend labels
+handles, labels = ax.get_legend_handles_labels()
+ax.legend(handles, ["Loser", "Winner"], title="Deck Outcome")  # custom legend
+
+# Optional: scientific notation for y-axis
+from matplotlib.ticker import ScalarFormatter
+ax.yaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+ax.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+
+plt.tight_layout()
+plt.show()
+
+#%% 3D) archetype by exlier
+
+import matplotlib.pyplot as plt
+
+# Compute mean per archetype (ignore std if you don't want error bars)
+elixir_summary = players.groupby("archetype")["avg_elixir"].mean().reindex(archetype_order)
+
+plt.figure(figsize=(10,6))
+plt.bar(
+    elixir_summary.index,
+    elixir_summary.values,
+    color=[archetype_colors[a] for a in elixir_summary.index]  # use your color mapping
 )
 plt.title("Average Elixir by Archetype")
+plt.xlabel("Archetype")
+plt.ylabel("Average Elixir")
 plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
 
-#%% 4) Build model (Linear and XGboost)
-
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report
-from xgboost import XGBClassifier
-
-# One-hot encode archetypes
-encoder = OneHotEncoder(drop='first')
-arch_ohe = encoder.fit_transform(players[["archetype"]]).toarray()
-arch_cols = encoder.get_feature_names_out(["archetype"])
-
-X = pd.DataFrame(arch_ohe, columns=arch_cols)
-X["avg_elixir"] = players["avg_elixir"]
-y = players["Winner"]
-
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-# Logistic Regression
-log_model = LogisticRegression(max_iter=1000)
-log_model.fit(X_train, y_train)
-y_pred_log = log_model.predict(X_test)
-print("Logistic Regression Accuracy:", accuracy_score(y_test, y_pred_log))
-print(classification_report(y_test, y_pred_log))
-
+print(elixir_summary)
 '''
-Logistic Regression Accuracy: 0.5130356086184692
-              precision    recall  f1-score   support
-
-           0       0.51      0.54      0.53     14375
-           1       0.51      0.48      0.50     14354
-
-    accuracy                           0.51     28729
-   macro avg       0.51      0.51      0.51     28729
-weighted avg       0.51      0.51      0.51     28729
+archetype
+Beatdown      3.914373
+Bait          3.635835
+Control       3.738358
+Cycle         3.707132
+Siege         3.338454
+Bridgespam    3.858375
+Name: avg_elixir, dtype: float64
 '''
 
-# XGBoost
-xgb_model = XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-xgb_model.fit(X_train, y_train)
-y_pred_xgb = xgb_model.predict(X_test)
-print("XGBoost Accuracy:", accuracy_score(y_test, y_pred_xgb))
-print(classification_report(y_test, y_pred_xgb))
-
-'''
-XGBoost Accuracy: 0.5335723484980334
-              precision    recall  f1-score   support
-
-           0       0.55      0.40      0.46     14375
-           1       0.53      0.66      0.59     14354
-
-    accuracy                           0.53     28729
-   macro avg       0.54      0.53      0.53     28729
-weighted avg       0.54      0.53      0.53     28729
-'''
-
-# Feature importance
-importances = pd.Series(xgb_model.feature_importances_, index=X.columns).sort_values(ascending=False)
-print("\nFeature Importances (XGBoost):\n", importances)
-importances.plot(kind="barh", figsize=(8,5))
-plt.title("Feature Importance (XGBoost)")
-plt.tight_layout()
-plt.show()
-
-'''
-Feature Importances (XGBoost):
- archetype_Bridgespam    0.248427
-archetype_Siege         0.192345
-archetype_Control       0.152396
-archetype_Cycle         0.140016
-avg_elixir              0.139227
-archetype_Beatdown      0.127590
-dtype: float32
-'''
-
-#%% 5) top 10 most cards
+#%% 4) top 15 most cards
 
 # Step 1: Collect all card ID columns (winner + loser) and rename variable
 top10card_cols = [c for c in battles_df.columns if "card" in c and ".id" in c]
@@ -253,33 +240,121 @@ card_counts = all_cards.value_counts().reset_index()
 card_counts.columns = ["card_id", "count"]
 
 # Step 4: Take the top 10 most used cards
-top10_cards = card_counts.head(10)
-print("Top 10 Most Used Cards:")
+top10_cards = card_counts.head(15)
+print("Top 15 Most Used Cards:")
 print(top10_cards)
 
 '''
-Top 10 Most Used Cards:
-         card_id  count
-0            Zap  28244
-1        The Log  28056
-2       Fireball  25723
-3       Valkyrie  22884
-4         Wizard  20458
-5         Arrows  19543
-6         Knight  19145
-7      Hog Rider  18970
-8  Skeleton Army  18209
-9    Mega Knight  15918
+Top 15 Most Used Cards:
+           card_id  count
+0              Zap  28244
+1          The Log  28056
+2         Fireball  25723
+3         Valkyrie  22884
+4           Wizard  20458
+5           Arrows  19543
+6           Knight  19145
+7        Hog Rider  18970
+8    Skeleton Army  18209
+9      Mega Knight  15918
+10     Baby Dragon  15601
+11  Electro Wizard  15528
+12  Mini P.E.K.K.A  14216
+13            Bats  14166
+14         Balloon  13905
 '''
 
 # Step 5: Plot the counts
 plt.figure(figsize=(8,5))
 sns.barplot(x="count", y="card_id", data=top10_cards, palette="crest")
-plt.title("Top 10 Most Used Cards")
+plt.title("Top 15 Most Used Cards")
 plt.xlabel("Usage Count")
 plt.ylabel("Card ID")
 plt.tight_layout()
 plt.show()
+
+#%% 5b) side by side comparison
+
+# Identify card columns
+winner_cols = [c for c in battles_df.columns if c.startswith("winner.") and ".card" in c and ".id" in c]
+loser_cols  = [c for c in battles_df.columns if c.startswith("loser.") and ".card" in c and ".id" in c]
+
+# Flatten to long form
+winner_cards = battles_df[winner_cols].melt(value_name="card_id")["card_id"].astype(str)
+loser_cards  = battles_df[loser_cols].melt(value_name="card_id")["card_id"].astype(str)
+
+# Frequencies
+winner_counts = winner_cards.value_counts().head(15)
+loser_counts  = loser_cards.value_counts().head(15)
+
+print(winner_counts, loser_counts)
+
+'''
+Winner count:
+card_id
+Zap               14572
+The Log           14475
+Fireball          13186
+Valkyrie          10658
+Knight            10067
+Arrows             9404
+Hog Rider          9310
+Wizard             9172
+Skeleton Army      8031
+Baby Dragon        7860
+Mega Knight        7605
+Electro Wizard     7570
+Bats               6973
+Balloon            6968
+Mini P.E.K.K.A     6797
+Name: count, dtype: int64 card_id
+
+Loser count:
+Zap               13672
+The Log           13581
+Fireball          12537
+Valkyrie          12226
+Wizard            11286
+Skeleton Army     10178
+Arrows            10139
+Hog Rider          9660
+Knight             9078
+Mega Knight        8313
+Electro Wizard     7958
+Baby Dragon        7741
+Mini P.E.K.K.A     7419
+Bats               7193
+Balloon            6937
+'''
+
+# Plot
+from matplotlib.ticker import ScalarFormatter
+
+fig, ax = plt.subplots(figsize=(12, 6))
+
+y_pos = range(len(winner_counts))
+
+# Winners (green)
+ax.barh([p + 0.2 for p in y_pos], winner_counts.values, height=0.4, color='green', label="Winners")
+
+# Losers (red)
+ax.barh([p - 0.2 for p in y_pos], loser_counts.values, height=0.4, color='red', label="Losers")
+
+ax.set_yticks(list(y_pos))
+ax.set_yticklabels(winner_counts.index)
+
+ax.set_xlabel("Number of Decks Using Card")
+ax.set_title("Top 15 Most Used Cards (Winners vs Losers)")
+ax.legend()
+
+# --- Set x-axis to scientific notation ---
+ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=True))
+ax.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
+
+plt.tight_layout()
+plt.show()
+
+
 
 
 
