@@ -5,6 +5,7 @@ Created on Thu Nov 13 13:03:28 2025
 @author: David
 """
 
+
 import pandas as pd
 
 #%% 1) Load the data
@@ -151,7 +152,7 @@ ax = sns.countplot(
 # Set title and labels
 plt.title("Deck Archetype Distribution")
 plt.xlabel("Archetype")
-plt.ylabel("Count")
+plt.ylabel("Number of Decks")
 plt.xticks(rotation=45)
 
 # --- Change y-axis scale ---
@@ -208,7 +209,7 @@ plt.bar(
     elixir_summary.values,
     color=[archetype_colors[a] for a in elixir_summary.index]  # use your color mapping
 )
-plt.title("Average Elixir by Archetype")
+plt.title("Archetype Average Elixir")
 plt.xlabel("Archetype")
 plt.ylabel("Average Elixir")
 plt.xticks(rotation=45)
